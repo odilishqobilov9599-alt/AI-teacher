@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Teacher – Admin Dashboard</title>
+  <style>
+    :root { --bg:#f7f9fc; --card:#ffffff; --text:#0f172a; --muted:#475569; --accent:#2563eb; --good:#16a34a; --bad:#dc2626; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 24px 16px; background: linear-gradient(135deg, #eef2ff, #f5f3ff); border-bottom: 1px solid #e2e8f0; }
+    h1 { margin:0 0 4px 0; font-size: 22px; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .card { background: var(--card); border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; box-shadow: 0 2px 14px rgba(2,6,23,0.04); margin-top:12px;}
+    .grid { display:grid; gap:12px; }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    label { font-size: 13px; color: var(--muted); }
+    input, select, button { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid #cbd5e1; background: #fff; font-size: 14px; }
+    button { cursor: pointer; background: var(--accent); color: #fff; border: none; font-weight: 600; }
+    button.secondary { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
+    .kpis { display:flex; gap:12px; flex-wrap:wrap; }
+    .pill { padding: 8px 12px; border-radius: 999px; background: #eef2ff; color: #1e40af; border:1px solid #c7d2fe; font-size: 12px; }
+    .muted { color: var(--muted); }
+    .hint { background:#f8fafc; border-left:3px solid var(--accent); padding:10px; border-radius:10px; color:#0f172a; }
+    .hidden { display:none; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <h1>AI Teacher – Admin Dashboard</h1>
+    <div class="muted">O‘qituvchi (admin) uchun o‘quvchilar va urinishlarni ko‘rish, filtrlash va CSVga eksport qilish.</div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div class="card" id="adminGate">
+    <h3>Admin kirishi</h3>
+    <div class="row">
+      <div style="flex:1 1 220px;">
+        <label for="adminCode">Admin kod (demo):</label>
+        <input id="adminCode" placeholder="Masalan: admin123" />
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button id="enterAdmin">Kirish</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="muted">
+      <b>Online saqlash:</b> Firebase konfiguratsiyasini to‘ldirsangiz, <i>users</i> va <i>attempts</i> kolleksiyalari o‘qiladi. Aks holda localStorage ishlaydi.
+    </div>
+  </div>
+
+  <div class="card hidden" id="filtersCard">
+    <h3>Filtrlar</h3>
+    <div class="grid grid-3">
+      <div>
+        <label for="gradeF">Sinf</label>
+        <select id="gradeF"></select>
+      </div>
+      <div>
+        <label for="subjectF">Fan</label>
+        <select id="subjectF"></select>
+      </div>
+      <div>
+        <label for="topicF">Mavzu</label>
+        <select id="topicF"></select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <button id="applyFilters">Filterlash</button>
+      <button class="secondary" id="resetFilters">Tozalash</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="kpiCard">
+    <h3>Umumiy ko‘rsatkichlar</h3>
+    <div class="kpis">
+      <div class="pill">Ro‘yxatdan o‘tganlar: <span id="kpiUsers">0</span></div>
+      <div class="pill">Urinishlar: <span id="kpiAttempts">0</span></div>
+      <div class="pill">To‘g‘ri: <span id="kpiCorrect">0</span></div>
+      <div class="pill">Xato: <span id="kpiWrong">0</span></div>
+      <div class="pill">Aniqlik: <span id="kpiAccuracy">0%</span></div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="usersCard">
+    <div class="row" style="justify-content:space-between; align-items:center;">
+      <h3 style="margin:0;">Foydalanuvchilar</h3>
+      <button id="exportUsers">CSV eksport</button>
+    </div>
+    <div style="overflow:auto; max-height: 300px; margin-top:8px;">
+      <table id="usersTable">
+        <thead>
+          <tr><th>Ism</th><th>Familiya</th><th>Telefon</th><th>Sinf</th><th>UserID</th><th>CreatedAt</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card hidden" id="attemptsCard">
+    <div class="row" style="justify-content:space-between; align-items:center;">
+      <h3 style="margin:0;">Urinishlar</h3>
+      <button id="exportAttempts">CSV eksport</button>
+    </div>
+    <div style="overflow:auto; max-height: 420px; margin-top:8px;">
+      <table id="attemptsTable">
+        <thead>
+          <tr>
+            <th>Foydalanuvchi</th><th>Telefon</th><th>Sinf</th><th>Sana</th>
+            <th>Sinf(Test)</th><th>Fan</th><th>Mavzu</th>
+            <th>SavolID</th><th>Tanlangan</th><th>To‘g‘ri</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+window.firebaseConfig = {
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_AUTH_DOMAIN",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "PASTE_STORAGE_BUCKET",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId: "PASTE_APP_ID"
+};
+
+let db = null;
+try {
+  if (window.firebaseConfig && window.firebaseConfig.apiKey && window.firebaseConfig.apiKey !== "PASTE_API_KEY") {
+    firebase.initializeApp(window.firebaseConfig);
+    db = firebase.firestore();
+  }
+} catch (e) { console.warn("Firebase issue:", e); }
+
+const adminGate = document.getElementById('adminGate');
+const enterAdmin = document.getElementById('enterAdmin');
+const adminCode = document.getElementById('adminCode');
+const filtersCard = document.getElementById('filtersCard');
+const kpiCard = document.getElementById('kpiCard');
+const usersCard = document.getElementById('usersCard');
+const attemptsCard = document.getElementById('attemptsCard');
+
+enterAdmin.addEventListener('click', () => {
+  const code = adminCode.value.trim();
+  if (code === "admin123") {
+    adminGate.classList.add('hidden');
+    filtersCard.classList.remove('hidden');
+    kpiCard.classList.remove('hidden');
+    usersCard.classList.remove('hidden');
+    attemptsCard.classList.remove('hidden');
+    boot();
+  } else {
+    alert("Noto‘g‘ri admin kod (demo: admin123).");
+  }
+});
+
+async function fetchUsers() {
+  if (db) {
+    const snap = await db.collection('users').get();
+    return snap.docs.map(d => d.data());
+  } else {
+    const uStr = localStorage.getItem("ai_teacher_user");
+    return uStr ? [JSON.parse(uStr)] : [];
+  }
+}
+async function fetchAttempts() {
+  if (db) {
+    const snap = await db.collection('attempts').orderBy('ts','desc').limit(500).get();
+    return snap.docs.map(d => d.data());
+  } else {
+    const arr = JSON.parse(localStorage.getItem("ai_attempts_history") || "[]");
+    return arr.reverse();
+  }
+}
+
+const gradeF = document.getElementById('gradeF');
+const subjectF = document.getElementById('subjectF');
+const topicF = document.getElementById('topicF');
+const applyFilters = document.getElementById('applyFilters');
+const resetFilters = document.getElementById('resetFilters');
+
+let USERS = [];
+let ATTEMPTS = [];
+
+function uniq(list){ return [...new Set(list)].filter(Boolean).sort(); }
+
+function fillFilterOptions() {
+  const g = uniq(ATTEMPTS.map(a => a.grade));
+  const s = uniq(ATTEMPTS.map(a => a.subject));
+  const t = uniq(ATTEMPTS.map(a => a.topic));
+  gradeF.innerHTML = `<option value="">Barchasi</option>` + g.map(x=>`<option>${x}</option>`).join("");
+  subjectF.innerHTML = `<option value="">Barchasi</option>` + s.map(x=>`<option>${x}</option>`).join("");
+  topicF.innerHTML = `<option value="">Barchasi</option>` + t.map(x=>`<option>${x}</option>`).join("");
+}
+
+function renderUsers(list) {
+  const tbody = document.querySelector('#usersTable tbody');
+  tbody.innerHTML = list.map(u => `
+    <tr>
+      <td>${u.firstName||""}</td>
+      <td>${u.lastName||""}</td>
+      <td>${u.phone||""}</td>
+      <td>${u.className||""}</td>
+      <td>${u.id||""}</td>
+      <td>${u.createdAt||""}</td>
+    </tr>
+  `).join("");
+  document.getElementById('kpiUsers').textContent = list.length;
+}
+
+function renderAttempts(list) {
+  const tbody = document.querySelector('#attemptsTable tbody');
+  tbody.innerHTML = list.map(a => `
+    <tr>
+      <td>${a.userName||""}</td>
+      <td>${a.phone||""}</td>
+      <td>${a.className||""}</td>
+      <td>${a.ts||""}</td>
+      <td>${a.grade||""}</td>
+      <td>${a.subject||""}</td>
+      <td>${a.topic||""}</td>
+      <td>${a.questionId||""}</td>
+      <td>${a.selected||""}</td>
+      <td>${a.isCorrect ? "✅" : "❌"}</td>
+    </tr>
+  `).join("");
+
+  const total = list.length;
+  const correct = list.filter(x => x.isCorrect).length;
+  const wrong = total - correct;
+  const acc = total ? Math.round((correct/total)*100) : 0;
+  document.getElementById('kpiAttempts').textContent = total;
+  document.getElementById('kpiCorrect').textContent = correct;
+  document.getElementById('kpiWrong').textContent = wrong;
+  document.getElementById('kpiAccuracy').textContent = acc + "%";
+}
+
+function filterAttempts() {
+  const g = gradeF.value; const s = subjectF.value; const t = topicF.value;
+  let list = ATTEMPTS.slice();
+  if (g) list = list.filter(a => a.grade === g);
+  if (s) list = list.filter(a => a.subject === s);
+  if (t) list = list.filter(a => a.topic === t);
+  renderAttempts(list);
+}
+
+applyFilters.addEventListener('click', filterAttempts);
+resetFilters.addEventListener('click', () => {
+  gradeF.value = ""; subjectF.value = ""; topicF.value = "";
+  renderAttempts(ATTEMPTS);
+});
+
+function toCSV(rows){
+  const esc = v => `"` + String(v||"").replace(/"/g,'""') + `"`;
+  return rows.map(r => r.map(esc).join(",")).join("\n");
+}
+function downloadCSV(name, csv){
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+}
+
+document.getElementById('exportUsers').addEventListener('click', () => {
+  const rows = [["firstName","lastName","phone","className","userId","createdAt"]]
+    .concat(USERS.map(u => [u.firstName,u.lastName,u.phone,u.className,u.id,u.createdAt]));
+  downloadCSV("users.csv", toCSV(rows));
+});
+
+document.getElementById('exportAttempts').addEventListener('click', () => {
+  const rows = [["userName","phone","className","ts","grade","subject","topic","questionId","selected","isCorrect"]]
+    .concat(ATTEMPTS.map(a => [a.userName,a.phone,a.className,a.ts,a.grade,a.subject,a.topic,a.questionId,a.selected,a.isCorrect]));
+  downloadCSV("attempts.csv", toCSV(rows));
+});
+
+async function boot() {
+  USERS = await fetchUsers();
+  ATTEMPTS = await fetchAttempts();
+  renderUsers(USERS);
+  renderAttempts(ATTEMPTS);
+  fillFilterOptions();
+}
+</script>
+</body>
+</html>
